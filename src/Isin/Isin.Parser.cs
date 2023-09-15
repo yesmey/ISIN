@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace Isin;
@@ -22,43 +21,55 @@ public partial struct Isin
     public static Isin Parse(string s, IFormatProvider? provider) =>
         ParseIsin(s.AsSpan());
 
-    public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider? provider, [MaybeNullWhen(false)] out Isin result)
+    public static bool TryParse(ReadOnlySpan<char> s, out Isin result)
     {
         return TryParseIsin(s, out result);
     }
 
-    public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Isin result)
+    public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider? provider, out Isin result)
+    {
+        return TryParseIsin(s, out result);
+    }
+
+    public static bool TryParse(string? s, out Isin result)
+    {
+        return TryParseIsin(s.AsSpan(), out result);
+    }
+
+    public static bool TryParse(string? s, IFormatProvider? provider, out Isin result)
     {
         return TryParseIsin(s.AsSpan(), out result);
     }
 
     private static Isin ParseIsin(ReadOnlySpan<char> span)
     {
-        //Span<byte> bytes = stackalloc byte[12];
-        //var conversionStatus = Ascii.FromUtf16(span, bytes, out _);
-        //if (conversionStatus != OperationStatus.Done)
-        //    throw new Exception();
+        if (!TryParseIsin(span, out var result))
+            throw new FormatException();
 
-        return default;
+        return result;
     }
 
     private static bool TryParseIsin(ReadOnlySpan<char> span, out Isin result)
     {
-        if (Validate(span))
+        if (ValidateFormat(span))
         {
-            Span<byte> bytes = stackalloc byte[IsinData.Length];
-            OperationStatus conversionStatus = Ascii.FromUtf16(span, bytes, out _);
+            var checkDigit = '0' + Checksum.Calculate(span);
+
+            Span<byte> bytes = stackalloc byte[Length];
+            OperationStatus conversionStatus = Ascii.FromUtf16(span, bytes, out int test);
             Debug.Assert(conversionStatus == OperationStatus.Done);
+
             result = new Isin(bytes);
+            return true;
         }
 
         result = default;
         return false;
     }
 
-    private static bool Validate(ReadOnlySpan<char> span)
+    private static bool ValidateFormat(ReadOnlySpan<char> span)
     {
-        if (span.Length != 12)
+        if (span.Length != Length)
             return false;
 
         // Validate Prefix

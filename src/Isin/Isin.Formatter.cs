@@ -35,13 +35,13 @@ public partial struct Isin
 
     private bool TryFormatCore<TChar>(Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(destination.Length, IsinData.Length);
+        ArgumentOutOfRangeException.ThrowIfLessThan(destination.Length, Length);
 
-        Span<TChar> tmpDestination = stackalloc TChar[IsinData.Length];
+        Span<TChar> tmpDestination = stackalloc TChar[Length];
 
         if (tmpDestination.TryCopyTo(destination))
         {
-            charsWritten = IsinData.Length;
+            charsWritten = Length;
             return true;
         }
 

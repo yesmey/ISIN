@@ -1,25 +1,24 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace Isin;
 
 public readonly partial struct Isin : ISpanFormattable, ISpanParsable<Isin>, IUtf8SpanFormattable
 {
+    private const int Length = 12;
     private readonly IsinData _data;
 
-    public static readonly Isin Empty;
+    public static readonly Isin Empty = new(new byte[Length]);
 
-    public Isin(byte[] bytes) :
-        this(new ReadOnlySpan<byte>(bytes))
+    public Isin(byte[] bytes) : this(bytes.AsSpan())
     {
         ArgumentNullException.ThrowIfNull(bytes);
     }
 
     public Isin(ReadOnlySpan<byte> bytes)
     {
-        ArgumentOutOfRangeException.ThrowIfNotEqual(bytes.Length, IsinData.Length);
-        _data = MemoryMarshal.Read<IsinData>(bytes);
+        ArgumentOutOfRangeException.ThrowIfNotEqual(bytes.Length, Length);
+        bytes.CopyTo(_data);
     }
 
     public Isin(ReadOnlySpan<char> chars)
@@ -32,9 +31,34 @@ public readonly partial struct Isin : ISpanFormattable, ISpanParsable<Isin>, IUt
         this = Parse(s);
     }
 
+    public string Value
+    {
+        get
+        {
+            return string.Create(Length, _data, static (c, b) =>
+            {
+                for (int i = 0; i < c.Length; i++)
+                    c[i] = (char)b[i];
+            });
+        }
+    }
+
+    public string CountryCode
+    {
+        get
+        {
+            Span<char> stack = stackalloc char[] { (char)_data[0], (char)_data[1] };
+            return stack.ToString();
+        }
+    }
+
+    public char CheckDigit => (char)_data[Length - 1];
+
+    public byte[] ToArray() => _data[..].ToArray();
+
     public override string ToString()
     {
-        Span<char> span = stackalloc char[IsinData.Length];
+        Span<char> span = stackalloc char[Length];
         TryFormat(span, out _);
         return span.ToString();
     }
@@ -61,7 +85,6 @@ public readonly partial struct Isin : ISpanFormattable, ISpanParsable<Isin>, IUt
     [InlineArray(Length)]
     private struct IsinData
     {
-        private byte _element;
-        public const int Length = 12;
+        private byte _element0;
     }
 }
