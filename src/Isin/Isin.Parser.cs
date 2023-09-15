@@ -55,7 +55,7 @@ public partial struct Isin
         {
             var checkDigit = '0' + Checksum.Calculate(span);
 
-            Span<byte> bytes = stackalloc byte[Length];
+            Span<byte> bytes = stackalloc byte[ISINLength];
             OperationStatus conversionStatus = Ascii.FromUtf16(span, bytes, out int test);
             Debug.Assert(conversionStatus == OperationStatus.Done);
 
@@ -69,7 +69,7 @@ public partial struct Isin
 
     private static bool ValidateFormat(ReadOnlySpan<char> span)
     {
-        if (span.Length != Length)
+        if (span.Length != ISINLength)
             return false;
 
         // Validate Prefix

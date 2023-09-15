@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -33,20 +34,23 @@ public partial struct Isin
         // format and provider are explicitly ignored
         TryFormatCore(utf8Destination, out bytesWritten);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool TryFormatCore<TChar>(Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(destination.Length, Length);
-
-        Span<TChar> tmpDestination = stackalloc TChar[Length];
-
-        if (tmpDestination.TryCopyTo(destination))
+        if (destination.Length < ISINLength)
         {
-            charsWritten = Length;
-            return true;
+            charsWritten = 0;
+            return default;
         }
 
-        charsWritten = 0;
-        return false;
+        Span<TChar> tmpDestination = stackalloc TChar[ISINLength];
+        for (var i = 0; i < ISINLength; i++)
+        {
+            tmpDestination[i] = TChar.CreateTruncating(_data[i]);
+        }
+
+        charsWritten = ISINLength;
+        return true;
     }
 
 }
