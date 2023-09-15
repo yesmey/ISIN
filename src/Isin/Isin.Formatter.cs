@@ -1,11 +1,4 @@
-﻿using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Numerics;
 
 namespace Isin;
 
@@ -26,15 +19,12 @@ public partial struct Isin
 
     /// <inheritdoc/>
     bool ISpanFormattable.TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider) =>
-        // format and provider are explicitly ignored
         TryFormatCore(destination, out charsWritten);
 
     /// <inheritdoc/>
     bool IUtf8SpanFormattable.TryFormat(Span<byte> utf8Destination, out int bytesWritten, ReadOnlySpan<char> format, IFormatProvider? provider) =>
-        // format and provider are explicitly ignored
         TryFormatCore(utf8Destination, out bytesWritten);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool TryFormatCore<TChar>(Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
     {
         if (destination.Length < ISINLength)
@@ -43,14 +33,12 @@ public partial struct Isin
             return default;
         }
 
-        Span<TChar> tmpDestination = stackalloc TChar[ISINLength];
         for (var i = 0; i < ISINLength; i++)
         {
-            tmpDestination[i] = TChar.CreateTruncating(_data[i]);
+            destination[i] = TChar.CreateTruncating(_data[i]);
         }
 
         charsWritten = ISINLength;
         return true;
     }
-
 }
