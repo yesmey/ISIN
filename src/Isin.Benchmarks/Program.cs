@@ -5,7 +5,7 @@ using Yesmey;
 BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
 
 [MemoryDiagnoser]
-class Perf_Isin
+public class Perf_Isin
 {
     private Isin _isin;
 
