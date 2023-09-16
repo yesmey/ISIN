@@ -1,25 +1,44 @@
-namespace Isin.Tests;
+namespace Yesmey.Tests;
 
 public class IsinParserTests
 {
-    [Fact]
-    public void CheckDigit()
+    [Theory]
+    [InlineData("AU0000XVGZA3", 3)]
+    [InlineData("ES0SI0000005", 5)]
+    public void Valid_CheckDigit(string text, int checkDigit)
     {
-        _ = Isin.TryParse("ES0SI0000005", out var isin);
-        Assert.Equal('5', isin.CheckDigit);
+        var valid = Isin.TryParse(text, out var isin);
+        Assert.True(valid);
+        Assert.Equal(checkDigit, isin.CheckDigit);
     }
 
-    [Fact]
-    public void Prefix()
+    [Theory]
+    [InlineData("AU0000XVGZA5", 5)]
+    [InlineData("ES0SI0000009", 9)]
+    public void Invalid_CheckDigit(string text, int checkDigit)
     {
-        _ = Isin.TryParse("ES0SI0000005", out var isin);
-        Assert.Equal("ES", isin.CountryCode);
+        var valid = Isin.TryParse(text, out var isin);
+        Assert.False(valid);
+        Assert.NotEqual(checkDigit, isin.CheckDigit);
     }
 
-    [Fact]
-    public void Value()
+    [Theory]
+    [InlineData("AU0000XVGZA3", "AU")]
+    [InlineData("ES0SI0000005", "ES")]
+    public void Prefix(string value, string countryCode)
     {
-        _ = Isin.TryParse("ES0SI0000005", out var isin);
-        Assert.Equal("ES0SI0000005", isin.Value);
+        var valid = Isin.TryParse(value, out var isin);
+        Assert.True(valid);
+        Assert.Equal(countryCode, isin.CountryCode);
+    }
+
+    [Theory]
+    [InlineData("AU0000XVGZA3", "0000XVGZA")]
+    [InlineData("ES0SI0000005", "0SI000000")]
+    public void BasicCode(string value, string basicCode)
+    {
+        var valid = Isin.TryParse(value, out var isin);
+        Assert.True(valid);
+        Assert.Equal(basicCode, isin.BasicCode);
     }
 }

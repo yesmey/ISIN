@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace Isin;
+namespace Yesmey;
 
 internal static class Checksum
 {

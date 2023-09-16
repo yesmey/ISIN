@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 
-namespace Isin;
+namespace Yesmey;
 
 public partial struct Isin
 {
@@ -27,18 +27,18 @@ public partial struct Isin
 
     private bool TryFormatCore<TChar>(Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
     {
-        if (destination.Length < ISINLength)
+        if (destination.Length < Length)
         {
             charsWritten = 0;
             return default;
         }
 
-        for (var i = 0; i < ISINLength; i++)
+        for (var i = 0; i < Length; i++)
         {
             destination[i] = TChar.CreateTruncating(_data[i]);
         }
 
-        charsWritten = ISINLength;
+        charsWritten = Length;
         return true;
     }
 }

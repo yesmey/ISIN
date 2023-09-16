@@ -1,4 +1,4 @@
-﻿namespace Isin.Tests;
+﻿namespace Yesmey.Tests;
 
 public class IsinCtorTests
 {

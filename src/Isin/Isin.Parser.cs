@@ -1,8 +1,10 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace Isin;
+namespace Yesmey;
 
 public partial struct Isin
 {
@@ -43,23 +45,21 @@ public partial struct Isin
 
     private static Isin ParseIsin(ReadOnlySpan<char> span)
     {
-        if (!TryParseIsin(span, out var result))
-            throw new FormatException();
+        (bool valid, ErrorCodes errorCodes) = ValidateFormat(span);
+        if (!valid)
+        {
+            ThrowFormattingError(errorCodes);
+        }
 
-        return result;
+        return CreateIsinFromChars(span);
     }
 
     private static bool TryParseIsin(ReadOnlySpan<char> span, out Isin result)
     {
-        if (ValidateFormat(span))
+        (bool valid, _) = ValidateFormat(span);
+        if (valid)
         {
-            var checkDigit = '0' + Checksum.Calculate(span);
-
-            Span<byte> bytes = stackalloc byte[ISINLength];
-            OperationStatus conversionStatus = Ascii.FromUtf16(span, bytes, out int test);
-            Debug.Assert(conversionStatus == OperationStatus.Done);
-
-            result = new Isin(bytes);
+            result = CreateIsinFromChars(span);
             return true;
         }
 
@@ -67,29 +67,69 @@ public partial struct Isin
         return false;
     }
 
-    private static bool ValidateFormat(ReadOnlySpan<char> span)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Isin CreateIsinFromChars(ReadOnlySpan<char> span)
     {
-        if (span.Length != ISINLength)
-            return false;
+        Span<byte> bytes = stackalloc byte[Length];
+        OperationStatus conversionStatus = Ascii.FromUtf16(span, bytes, out int test);
+        Debug.Assert(conversionStatus == OperationStatus.Done);
+        return new Isin(bytes);
+    }
+
+    private static (bool, ErrorCodes) ValidateFormat(ReadOnlySpan<char> span)
+    {
+        if (span.Length != Length)
+            return (false, ErrorCodes.Length);
 
         // Validate Prefix
         foreach (var chr in span[0..2])
         {
             if (!char.IsAsciiLetterUpper(chr))
-                return false;
+                return (false, ErrorCodes.Prefix);
         }
 
         // Validate Basic Code
         foreach (var chr in span[2..11])
         {
             if (!char.IsAsciiDigit(chr) && !char.IsAsciiLetterUpper(chr))
-                return false;
+                return (false, ErrorCodes.BasicCode);
         }
 
         // Validate last digit
         if (!char.IsAsciiDigit(span[11]))
-            return false;
+            return (false, ErrorCodes.LastDigit);
 
-        return true;
+        var checkDigit = span[11];
+        var checkSum = (char)(Checksum.Calculate(span[0..11]) + '0');
+        if (checkDigit != checkSum)
+            return (false, ErrorCodes.CheckDigit);
+
+        return (true, ErrorCodes.None);
+    }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowFormattingError(ErrorCodes errorCodes)
+    {
+        var errorMessage = errorCodes switch
+        {
+            ErrorCodes.Length => $"Invalid Length - must be {Length} characters",
+            ErrorCodes.Prefix => "Invalid CountryCode prefix. Must be 2 uppercase characters",
+            ErrorCodes.BasicCode => "Basic Code (9 characters) must be uppercase alphanumeric",
+            ErrorCodes.LastDigit => "Last character must be a digit 0-9",
+            ErrorCodes.CheckDigit => "Could not validate checksum",
+            _ => throw new NotImplementedException()
+        };
+        throw new FormatException(errorMessage);
+    }
+
+    private enum ErrorCodes
+    {
+        None,
+        Length,
+        Prefix,
+        BasicCode,
+        LastDigit,
+        CheckDigit
     }
 }
