@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -45,10 +44,10 @@ public partial struct Isin
 
     private static Isin ParseIsin(ReadOnlySpan<char> span)
     {
-        (bool valid, ErrorCodes errorCodes) = ValidateFormat(span);
-        if (!valid)
+        var parsingResult = ValidateFormat(span);
+        if (parsingResult != ParsingResult.Success)
         {
-            ThrowFormattingError(errorCodes);
+            parsingResult.ThrowFormattingError();
         }
 
         return CreateIsinFromChars(span);
@@ -56,8 +55,7 @@ public partial struct Isin
 
     private static bool TryParseIsin(ReadOnlySpan<char> span, out Isin result)
     {
-        (bool valid, _) = ValidateFormat(span);
-        if (valid)
+        if (ValidateFormat(span) == ParsingResult.Success)
         {
             result = CreateIsinFromChars(span);
             return true;
@@ -76,60 +74,34 @@ public partial struct Isin
         return new Isin(bytes);
     }
 
-    private static (bool, ErrorCodes) ValidateFormat(ReadOnlySpan<char> span)
+    private static ParsingResult ValidateFormat(ReadOnlySpan<char> span)
     {
         if (span.Length != Length)
-            return (false, ErrorCodes.Length);
+            return ParsingResult.Error_Length;
 
         // Validate Prefix
         foreach (var chr in span[0..2])
         {
             if (!char.IsAsciiLetterUpper(chr))
-                return (false, ErrorCodes.Prefix);
+                return ParsingResult.Error_Prefix;
         }
 
         // Validate Basic Code
         foreach (var chr in span[2..11])
         {
             if (!char.IsAsciiDigit(chr) && !char.IsAsciiLetterUpper(chr))
-                return (false, ErrorCodes.BasicCode);
+                return ParsingResult.Error_BasicCode;
         }
 
         // Validate last digit
         if (!char.IsAsciiDigit(span[11]))
-            return (false, ErrorCodes.LastDigit);
+            return ParsingResult.Error_LastDigit;
 
         var checkDigit = span[11];
         var checkSum = (char)(Checksum.Calculate(span[0..11]) + '0');
         if (checkDigit != checkSum)
-            return (false, ErrorCodes.CheckDigit);
+            return ParsingResult.Error_CheckDigit;
 
-        return (true, ErrorCodes.None);
-    }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowFormattingError(ErrorCodes errorCodes)
-    {
-        var errorMessage = errorCodes switch
-        {
-            ErrorCodes.Length => $"Invalid Length - must be {Length} characters",
-            ErrorCodes.Prefix => "Invalid CountryCode prefix. Must be 2 uppercase characters",
-            ErrorCodes.BasicCode => "Basic Code (9 characters) must be uppercase alphanumeric",
-            ErrorCodes.LastDigit => "Last character must be a digit 0-9",
-            ErrorCodes.CheckDigit => "Could not validate checksum",
-            _ => throw new NotImplementedException()
-        };
-        throw new FormatException(errorMessage);
-    }
-
-    private enum ErrorCodes
-    {
-        None,
-        Length,
-        Prefix,
-        BasicCode,
-        LastDigit,
-        CheckDigit
+        return ParsingResult.Success;
     }
 }
